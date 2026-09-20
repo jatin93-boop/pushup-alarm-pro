@@ -1,6 +1,6 @@
 {
-  "name": "PushUp Alarm Pro",
-  "short_name": "PushUp Alarm",
+  "name": "RepRise - AI Push-Up Alarm",
+  "short_name": "RepRise",
   "description": "An intelligent, persistent alarm app that only turns off when you perform 10 pushups tracked live with AI webcam pose detection.",
   "start_url": "/",
   "display": "standalone",
