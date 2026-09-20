@@ -1,4 +1,4 @@
-// Web Audio API & Speech Synthesis Sound Engine for PushUp Alarm Pro
+// Audio Engine & AI Voice Coach Personalities for RepRise
 
 class AudioEngine {
   constructor() {
@@ -9,6 +9,9 @@ class AudioEngine {
     this.lfoOscillator = null;
     this.isPlayingAlarm = false;
     this.soundType = 'siren';
+    this.voiceCoach = 'drill'; // 'drill', 'yogi', 'hype', 'classic'
+    this.phaseTimer = null;
+    this.isPhase2Siren = false;
     this.speechSynth = typeof window !== 'undefined' && 'speechSynthesis' in window ? window.speechSynthesis : null;
   }
 
@@ -24,114 +27,91 @@ class AudioEngine {
     }
   }
 
-  // Continuous Loud Alarm Sound
-  startAlarm(type = 'siren') {
+  setVoiceCoach(coach = 'drill') {
+    this.voiceCoach = coach;
+  }
+
+  // 2-Phase Progressive Alarm: Gentle Nature Chimes ➔ Emergency Siren
+  startAlarm(type = 'siren', coach = 'drill') {
     this.initContext();
     if (!this.audioCtx) return;
     if (this.isPlayingAlarm) this.stopAlarm();
 
     this.soundType = type;
+    this.voiceCoach = coach;
     this.isPlayingAlarm = true;
+    this.isPhase2Siren = false;
 
-    const now = this.audioCtx.currentTime;
+    // Start Phase 1: Gentle Chime
+    this.startGentlePhase();
 
-    // Master Gain
-    this.alarmGain = this.audioCtx.createGain();
-    this.alarmGain.gain.setValueAtTime(0.7, now);
-    this.alarmGain.connect(this.audioCtx.destination);
-
-    if (type === 'siren') {
-      // Emergency dual-tone siren with frequency modulation
-      this.alarmOscillator1 = this.audioCtx.createOscillator();
-      this.alarmOscillator1.type = 'sawtooth';
-      this.alarmOscillator1.frequency.setValueAtTime(700, now);
-
-      // Low frequency oscillator to modulate pitch
-      this.lfoOscillator = this.audioCtx.createOscillator();
-      this.lfoOscillator.type = 'sine';
-      this.lfoOscillator.frequency.setValueAtTime(2.5, now); // 2.5 sweeps per sec
-
-      const lfoGain = this.audioCtx.createGain();
-      lfoGain.gain.setValueAtTime(400, now); // Sweep pitch from 300Hz to 1100Hz
-
-      this.lfoOscillator.connect(lfoGain);
-      lfoGain.connect(this.alarmOscillator1.frequency);
-
-      this.alarmOscillator1.connect(this.alarmGain);
-      this.alarmOscillator1.start(now);
-      this.lfoOscillator.start(now);
-
-    } else if (type === 'buzzer') {
-      // Harsh industrial square wave buzzer
-      this.alarmOscillator1 = this.audioCtx.createOscillator();
-      this.alarmOscillator1.type = 'square';
-      this.alarmOscillator1.frequency.setValueAtTime(150, now);
-
-      this.alarmOscillator2 = this.audioCtx.createOscillator();
-      this.alarmOscillator2.type = 'sawtooth';
-      this.alarmOscillator2.frequency.setValueAtTime(154, now); // Slightly detuned for buzz
-
-      // Pulsing gain modulation
-      this.lfoOscillator = this.audioCtx.createOscillator();
-      this.lfoOscillator.type = 'square';
-      this.lfoOscillator.frequency.setValueAtTime(4, now); // 4 pulses per second
-
-      const pulseGain = this.audioCtx.createGain();
-      pulseGain.gain.setValueAtTime(0.5, now);
-      this.lfoOscillator.connect(pulseGain.gain);
-
-      this.alarmOscillator1.connect(pulseGain);
-      this.alarmOscillator2.connect(pulseGain);
-      pulseGain.connect(this.alarmGain);
-
-      this.alarmOscillator1.start(now);
-      this.alarmOscillator2.start(now);
-      this.lfoOscillator.start(now);
-
-    } else if (type === 'pulse') {
-      // High pitch warning pulse
-      this.alarmOscillator1 = this.audioCtx.createOscillator();
-      this.alarmOscillator1.type = 'sine';
-      this.alarmOscillator1.frequency.setValueAtTime(1000, now);
-
-      this.lfoOscillator = this.audioCtx.createOscillator();
-      this.lfoOscillator.type = 'square';
-      this.lfoOscillator.frequency.setValueAtTime(3, now);
-
-      const lfoGain = this.audioCtx.createGain();
-      lfoGain.gain.setValueAtTime(0.8, now);
-      this.lfoOscillator.connect(lfoGain);
-
-      this.alarmOscillator1.connect(this.alarmGain);
-      this.alarmGain.gain.setValueAtTime(0, now);
-      
-      // Pulse interval
-      this.pulseInterval = setInterval(() => {
-        if (!this.isPlayingAlarm || !this.audioCtx) return;
-        const t = this.audioCtx.currentTime;
-        this.alarmGain.gain.setValueAtTime(0.8, t);
-        this.alarmGain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
-      }, 350);
-
-      this.alarmOscillator1.start(now);
-      this.lfoOscillator.start(now);
-    } else {
-      // High pitch classic alarm
-      this.alarmOscillator1 = this.audioCtx.createOscillator();
-      this.alarmOscillator1.type = 'sine';
-      this.alarmOscillator1.frequency.setValueAtTime(880, now);
-      this.alarmOscillator1.connect(this.alarmGain);
-      this.alarmOscillator1.start(now);
-    }
+    // Escalates to Phase 2 Emergency Siren after 30 seconds
+    this.phaseTimer = setTimeout(() => {
+      if (this.isPlayingAlarm) {
+        this.isPhase2Siren = true;
+        this.speakCoach("Time is up! Emergency Siren activated! Start your reps now!");
+        this.startEmergencySiren(type);
+      }
+    }, 30000);
   }
 
-  stopAlarm() {
-    this.isPlayingAlarm = false;
-    if (this.pulseInterval) {
-      clearInterval(this.pulseInterval);
-      this.pulseInterval = null;
-    }
+  startGentlePhase() {
+    if (!this.audioCtx) return;
+    const now = this.audioCtx.currentTime;
 
+    this.alarmGain = this.audioCtx.createGain();
+    this.alarmGain.gain.setValueAtTime(0.3, now);
+    this.alarmGain.connect(this.audioCtx.destination);
+
+    // Soft organic triangle synth wave
+    this.alarmOscillator1 = this.audioCtx.createOscillator();
+    this.alarmOscillator1.type = 'triangle';
+    this.alarmOscillator1.frequency.setValueAtTime(440, now); // A4 note
+
+    this.lfoOscillator = this.audioCtx.createOscillator();
+    this.lfoOscillator.type = 'sine';
+    this.lfoOscillator.frequency.setValueAtTime(1.5, now);
+
+    const lfoGain = this.audioCtx.createGain();
+    lfoGain.gain.setValueAtTime(80, now);
+    this.lfoOscillator.connect(lfoGain);
+    lfoGain.connect(this.alarmOscillator1.frequency);
+
+    this.alarmOscillator1.connect(this.alarmGain);
+    this.alarmOscillator1.start(now);
+    this.lfoOscillator.start(now);
+
+    this.speakCoach("Good morning! Time to rise and earn your day!");
+  }
+
+  startEmergencySiren(type = 'siren') {
+    this.stopAudioNodes();
+    if (!this.audioCtx) return;
+    const now = this.audioCtx.currentTime;
+
+    this.alarmGain = this.audioCtx.createGain();
+    this.alarmGain.gain.setValueAtTime(0.8, now);
+    this.alarmGain.connect(this.audioCtx.destination);
+
+    this.alarmOscillator1 = this.audioCtx.createOscillator();
+    this.alarmOscillator1.type = 'sawtooth';
+    this.alarmOscillator1.frequency.setValueAtTime(700, now);
+
+    this.lfoOscillator = this.audioCtx.createOscillator();
+    this.lfoOscillator.type = 'sine';
+    this.lfoOscillator.frequency.setValueAtTime(3.5, now);
+
+    const lfoGain = this.audioCtx.createGain();
+    lfoGain.gain.setValueAtTime(500, now);
+    this.lfoOscillator.connect(lfoGain);
+    lfoGain.connect(this.alarmOscillator1.frequency);
+
+    this.alarmOscillator1.connect(this.alarmGain);
+    this.alarmOscillator1.start(now);
+    this.lfoOscillator.start(now);
+  }
+
+  stopAudioNodes() {
     try {
       if (this.alarmOscillator1) {
         this.alarmOscillator1.stop();
@@ -148,12 +128,18 @@ class AudioEngine {
         this.lfoOscillator.disconnect();
         this.lfoOscillator = null;
       }
-    } catch (e) {
-      // Ignore audio stop errors
-    }
+    } catch (e) {}
   }
 
-  // Play pleasant chime when pushup rep is completed
+  stopAlarm() {
+    this.isPlayingAlarm = false;
+    if (this.phaseTimer) {
+      clearTimeout(this.phaseTimer);
+      this.phaseTimer = null;
+    }
+    this.stopAudioNodes();
+  }
+
   playRepChime(repNumber = 1) {
     this.initContext();
     if (!this.audioCtx) return;
@@ -162,35 +148,32 @@ class AudioEngine {
     const osc = this.audioCtx.createOscillator();
     const gain = this.audioCtx.createGain();
 
-    // Pitch increases with rep number for satisfying progression
-    const baseFreq = 523.25; // C5 note
-    const pitchMultiplier = 1 + (repNumber * 0.05); 
-    const freq = baseFreq * pitchMultiplier;
+    const baseFreq = 523.25;
+    const freq = baseFreq * (1 + (repNumber * 0.04));
 
     osc.type = 'triangle';
     osc.frequency.setValueAtTime(freq, now);
-    osc.frequency.exponentialRampToValueAtTime(freq * 1.5, now + 0.15);
+    osc.frequency.exponentialRampToValueAtTime(freq * 1.4, now + 0.15);
 
     gain.gain.setValueAtTime(0.6, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
 
     osc.connect(gain);
     gain.connect(this.audioCtx.destination);
 
     osc.start(now);
-    osc.stop(now + 0.4);
+    osc.stop(now + 0.35);
 
-    // Speak count
-    this.speak(`${repNumber}`);
+    // Speak rep with selected coach personality
+    this.speakCoachRep(repNumber);
   }
 
-  // Play Victory Fanfare when target (e.g. 10 reps) is reached
   playVictoryFanfare() {
     this.initContext();
     if (!this.audioCtx) return;
 
     const now = this.audioCtx.currentTime;
-    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+    const notes = [523.25, 659.25, 783.99, 1046.50];
     
     notes.forEach((freq, idx) => {
       const osc = this.audioCtx.createOscillator();
@@ -211,22 +194,50 @@ class AudioEngine {
       osc.stop(startTime + 0.8);
     });
 
-    this.speak("Target reached! Alarm turned off!");
+    this.speakCoach("Victory! Goal achieved, alarm dismissed!");
   }
 
-  // Voice synthesis text-to-speech helper
-  speak(text) {
+  // AI Voice Coach Personalities
+  speakCoachRep(repNumber) {
+    let msg = `${repNumber}!`;
+
+    if (this.voiceCoach === 'drill') {
+      const drillPhrases = [
+        `${repNumber}! Push hard cadet!`,
+        `${repNumber}! Drive it up!`,
+        `${repNumber}! No excuses!`,
+        `${repNumber}! Feel the burn!`,
+        `${repNumber}! Strong form!`
+      ];
+      msg = drillPhrases[(repNumber - 1) % drillPhrases.length];
+    } else if (this.voiceCoach === 'yogi') {
+      msg = `Breathe in... ${repNumber}. Beautiful depth.`;
+    } else if (this.voiceCoach === 'hype') {
+      msg = `Boom! ${repNumber}! Keep that energy up!`;
+    }
+
+    this.speakCoach(msg);
+  }
+
+  speakCoach(text) {
     if (!this.speechSynth) return;
     try {
-      this.speechSynth.cancel(); // cancel any active speech
+      this.speechSynth.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.2;
-      utterance.pitch = 1.1;
-      utterance.volume = 1.0;
+      
+      if (this.voiceCoach === 'drill') {
+        utterance.rate = 1.3;
+        utterance.pitch = 0.8;
+      } else if (this.voiceCoach === 'yogi') {
+        utterance.rate = 0.95;
+        utterance.pitch = 1.2;
+      } else if (this.voiceCoach === 'hype') {
+        utterance.rate = 1.4;
+        utterance.pitch = 1.3;
+      }
+      
       this.speechSynth.speak(utterance);
-    } catch (e) {
-      console.warn('Speech synthesis unavailable:', e);
-    }
+    } catch (e) {}
   }
 }
 

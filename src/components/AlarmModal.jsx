@@ -8,34 +8,31 @@ const AlarmModal = ({ alarm, onDismiss, isTestMode = false }) => {
   const [currentReps, setCurrentReps] = useState(0);
   const targetReps = alarm?.targetReps || 10;
   const soundType = alarm?.soundType || 'siren';
+  const exerciseType = alarm?.exerciseType || 'pushups';
+  const voiceCoach = alarm?.voiceCoach || 'drill';
   
   const [isDismissed, setIsDismissed] = useState(false);
   const [overrideHoldTime, setOverrideHoldTime] = useState(0);
   const overrideTimerRef = useRef(null);
 
-  // Start alarm audio on mount - Mute option disabled (Must complete pushups to turn off sound)
   useEffect(() => {
-    audioEngine.startAlarm(soundType);
+    audioEngine.startAlarm(soundType, voiceCoach);
 
     return () => {
       audioEngine.stopAlarm();
     };
-  }, [soundType]);
+  }, [soundType, voiceCoach]);
 
-  // Handle rep increment from detector
   const handleRepComplete = (newRepCount) => {
     setCurrentReps(newRepCount);
-    // Play pleasant rep chime & voice count
     audioEngine.playRepChime(newRepCount);
   };
 
-  // Handle target reps achieved (e.g. 10 pushups completed)
   const handleGoalReached = () => {
     setIsDismissed(true);
     audioEngine.stopAlarm();
     audioEngine.playVictoryFanfare();
 
-    // Trigger confetti explosion
     confetti({
       particleCount: 150,
       spread: 90,
@@ -43,7 +40,6 @@ const AlarmModal = ({ alarm, onDismiss, isTestMode = false }) => {
     });
   };
 
-  // Emergency override button (Must press and hold for 10 seconds to bypass)
   const startOverrideHold = () => {
     setOverrideHoldTime(0);
     overrideTimerRef.current = setInterval(() => {
@@ -70,7 +66,6 @@ const AlarmModal = ({ alarm, onDismiss, isTestMode = false }) => {
     <div className={`alarm-modal-overlay ${isDismissed ? 'dismissed-state' : ''}`}>
       <div className="alarm-modal-container">
 
-        {/* Victory Screen when goal achieved */}
         {isDismissed ? (
           <div className="victory-card">
             <div className="victory-icon-wrapper">
@@ -78,12 +73,12 @@ const AlarmModal = ({ alarm, onDismiss, isTestMode = false }) => {
             </div>
             <h2>WAKE-UP GOAL ACHIEVED!</h2>
             <p className="victory-subtitle">
-              You completed <strong>{targetReps} Push-Ups</strong>! Your alarm is dismissed and your mind is wide awake.
+              You completed <strong>{targetReps} {exerciseType.replace('_', ' ').toUpperCase()}</strong>! Your alarm is dismissed and your mind is wide awake.
             </p>
 
             <div className="victory-stats-badge">
               <div className="stat-num">{targetReps}</div>
-              <div className="stat-label">Pushups Completed</div>
+              <div className="stat-label">{exerciseType.replace('_', ' ').toUpperCase()} Completed</div>
             </div>
 
             <button className="btn btn-victory-close" onClick={onDismiss}>
@@ -91,7 +86,6 @@ const AlarmModal = ({ alarm, onDismiss, isTestMode = false }) => {
             </button>
           </div>
         ) : (
-          /* Active Ringing Alarm Takeover Screen */
           <>
             <div className="alarm-header-pulse">
               <div className="alarm-badge">
@@ -100,23 +94,22 @@ const AlarmModal = ({ alarm, onDismiss, isTestMode = false }) => {
               </div>
               <h1 className="alarm-title">{alarm?.label || 'Wake Up Time!'}</h1>
               <p className="alarm-instruction">
-                Do <strong className="highlight-text">{targetReps} Push-Ups</strong> in front of the camera to turn off this alarm!
+                Do <strong className="highlight-text">{targetReps} {exerciseType.replace('_', ' ').toUpperCase()}</strong> in front of the camera to turn off this alarm!
               </p>
             </div>
 
-            {/* Live Camera Pushup Detector */}
             <PushupDetector 
+              exerciseType={exerciseType}
               targetReps={targetReps}
               currentReps={currentReps}
               onRepComplete={handleRepComplete}
               onGoalReached={handleGoalReached}
             />
 
-            {/* Locked Sound Status & Emergency Hold Controls */}
             <div className="alarm-footer-controls">
               <div className="sound-active-badge">
                 <Volume2 size={16} className="spin-icon" />
-                <span>SOUND LOCKED (DO PUSHUPS TO STOP)</span>
+                <span>PROGRESSIVE SOUND ACTIVE ({voiceCoach.toUpperCase()} COACH)</span>
               </div>
 
               <div className="emergency-override-wrapper">

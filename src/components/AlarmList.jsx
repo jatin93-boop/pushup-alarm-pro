@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Bell, Trash2, Edit3, Dumbbell, Volume2, Check, X } from 'lucide-react';
+import { Plus, Bell, Trash2, Edit3, Dumbbell, Volume2, Check, X, UserCheck } from 'lucide-react';
 
 const DAYS_OF_WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -7,19 +7,22 @@ const AlarmList = ({ alarms = [], onAddAlarm, onUpdateAlarm, onDeleteAlarm, onTe
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAlarm, setEditingAlarm] = useState(null);
 
-  // Form State
   const [time, setTime] = useState('07:00');
-  const [label, setLabel] = useState('Morning Pushup Workout');
+  const [label, setLabel] = useState('Morning Workout Wake-Up');
+  const [exerciseType, setExerciseType] = useState('pushups');
   const [targetReps, setTargetReps] = useState(10);
   const [soundType, setSoundType] = useState('siren');
+  const [voiceCoach, setVoiceCoach] = useState('drill');
   const [repeatDays, setRepeatDays] = useState(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
 
   const openAddModal = () => {
     setEditingAlarm(null);
     setTime('07:00');
-    setLabel('Morning Pushup Wake-up');
+    setLabel('Morning Workout Wake-Up');
+    setExerciseType('pushups');
     setTargetReps(10);
     setSoundType('siren');
+    setVoiceCoach('drill');
     setRepeatDays(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
     setIsModalOpen(true);
   };
@@ -28,8 +31,10 @@ const AlarmList = ({ alarms = [], onAddAlarm, onUpdateAlarm, onDeleteAlarm, onTe
     setEditingAlarm(alarm);
     setTime(alarm.time);
     setLabel(alarm.label || 'Alarm');
+    setExerciseType(alarm.exerciseType || 'pushups');
     setTargetReps(alarm.targetReps || 10);
     setSoundType(alarm.soundType || 'siren');
+    setVoiceCoach(alarm.voiceCoach || 'drill');
     setRepeatDays(alarm.repeatDays || []);
     setIsModalOpen(true);
   };
@@ -48,8 +53,10 @@ const AlarmList = ({ alarms = [], onAddAlarm, onUpdateAlarm, onDeleteAlarm, onTe
       id: editingAlarm ? editingAlarm.id : Date.now().toString(),
       time,
       label,
+      exerciseType,
       targetReps: parseInt(targetReps, 10) || 10,
       soundType,
+      voiceCoach,
       repeatDays,
       enabled: true
     };
@@ -77,7 +84,7 @@ const AlarmList = ({ alarms = [], onAddAlarm, onUpdateAlarm, onDeleteAlarm, onTe
         <div className="empty-alarms-card">
           <Dumbbell size={40} className="empty-icon" />
           <h3>No Alarms Set</h3>
-          <p>Create your first alarm to start waking up with 10 pushups!</p>
+          <p>Create your first alarm to start waking up with AI pushups or squats!</p>
           <button className="btn btn-primary" onClick={openAddModal}>
             <Plus size={16} /> Create Alarm
           </button>
@@ -102,10 +109,10 @@ const AlarmList = ({ alarms = [], onAddAlarm, onUpdateAlarm, onDeleteAlarm, onTe
                 <div className="alarm-label">{alarm.label}</div>
                 <div className="alarm-specs">
                   <span className="spec-badge reps-badge">
-                    <Dumbbell size={14} /> {alarm.targetReps} Pushups
+                    <Dumbbell size={14} /> {alarm.targetReps} {(alarm.exerciseType || 'pushups').replace('_', ' ').toUpperCase()}
                   </span>
                   <span className="spec-badge sound-badge">
-                    <Volume2 size={14} /> {alarm.soundType.toUpperCase()}
+                    <UserCheck size={14} /> {(alarm.voiceCoach || 'drill').toUpperCase()} COACH
                   </span>
                 </div>
 
@@ -149,12 +156,11 @@ const AlarmList = ({ alarms = [], onAddAlarm, onUpdateAlarm, onDeleteAlarm, onTe
         </div>
       )}
 
-      {/* Add / Edit Alarm Modal */}
       {isModalOpen && (
         <div className="modal-backdrop">
           <div className="modal-card">
             <div className="modal-header">
-              <h3>{editingAlarm ? 'Edit Pushup Alarm' : 'Set New Pushup Alarm'}</h3>
+              <h3>{editingAlarm ? 'Edit Alarm' : 'Set New Alarm'}</h3>
               <button className="btn-icon" onClick={() => setIsModalOpen(false)}>
                 <X size={18} />
               </button>
@@ -179,14 +185,28 @@ const AlarmList = ({ alarms = [], onAddAlarm, onUpdateAlarm, onDeleteAlarm, onTe
                   className="form-input"
                   value={label} 
                   onChange={e => setLabel(e.target.value)}
-                  placeholder="e.g. Morning Wakeup"
+                  placeholder="e.g. Morning Workout"
                   required 
                 />
               </div>
 
               <div className="form-row">
                 <div className="form-group half">
-                  <label>Required Pushups (Reps)</label>
+                  <label>AI Exercise Type</label>
+                  <select 
+                    className="form-select"
+                    value={exerciseType} 
+                    onChange={e => setExerciseType(e.target.value)}
+                  >
+                    <option value="pushups">🏋️ Push-Ups</option>
+                    <option value="squats">🦵 Squats</option>
+                    <option value="jumping_jacks">⭐ Jumping Jacks</option>
+                    <option value="plank">🧘 Plank Hold (Seconds)</option>
+                  </select>
+                </div>
+
+                <div className="form-group half">
+                  <label>Target Reps / Seconds</label>
                   <input 
                     type="number" 
                     min="1"
@@ -197,9 +217,11 @@ const AlarmList = ({ alarms = [], onAddAlarm, onUpdateAlarm, onDeleteAlarm, onTe
                     required 
                   />
                 </div>
+              </div>
 
+              <div className="form-row">
                 <div className="form-group half">
-                  <label>Alarm Sound</label>
+                  <label>Alarm Siren Sound</label>
                   <select 
                     className="form-select"
                     value={soundType} 
@@ -208,7 +230,20 @@ const AlarmList = ({ alarms = [], onAddAlarm, onUpdateAlarm, onDeleteAlarm, onTe
                     <option value="siren">🚨 Emergency Siren</option>
                     <option value="buzzer">⚡ Cyber Buzzer</option>
                     <option value="pulse">🔊 High Pulse</option>
-                    <option value="classic">⏰ Loud Classic Beep</option>
+                    <option value="classic">⏰ Classic Beep</option>
+                  </select>
+                </div>
+
+                <div className="form-group half">
+                  <label>AI Voice Coach</label>
+                  <select 
+                    className="form-select"
+                    value={voiceCoach} 
+                    onChange={e => setVoiceCoach(e.target.value)}
+                  >
+                    <option value="drill">🎖️ Drill Sergeant</option>
+                    <option value="yogi">🧘 Zen Yogi</option>
+                    <option value="hype">🎧 Hype DJ</option>
                   </select>
                 </div>
               </div>

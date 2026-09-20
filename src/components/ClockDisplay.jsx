@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Zap, Volume2, Plus, Flame } from 'lucide-react';
+import { Clock, Zap, Volume2, Plus, Flame, Moon } from 'lucide-react';
 import { audioEngine } from '../utils/audioSynth';
 
 const ClockDisplay = ({ alarms = [], onTestAlarm, onAddAlarmClick }) => {
@@ -12,7 +12,6 @@ const ClockDisplay = ({ alarms = [], onTestAlarm, onAddAlarmClick }) => {
     return () => clearInterval(timer);
   }, []);
 
-  // Calculate upcoming alarm
   const getNextAlarmInfo = () => {
     const activeAlarms = alarms.filter(a => a.enabled);
     if (activeAlarms.length === 0) return null;
@@ -28,7 +27,7 @@ const ClockDisplay = ({ alarms = [], onTestAlarm, onAddAlarmClick }) => {
       let alarmMinutes = h * 60 + m;
 
       if (alarmMinutes <= currentMinutes) {
-        alarmMinutes += 24 * 60; // next day
+        alarmMinutes += 24 * 60;
       }
 
       const diff = alarmMinutes - currentMinutes;
@@ -43,10 +42,19 @@ const ClockDisplay = ({ alarms = [], onTestAlarm, onAddAlarmClick }) => {
     const hoursLeft = Math.floor(upcoming.diffMinutes / 60);
     const minsLeft = upcoming.diffMinutes % 60;
 
+    // Calculate Bedtime for 8 Hours Sleep
+    const [alarmH, alarmM] = upcoming.alarm.time.split(':').map(Number);
+    let bedtimeH = (alarmH - 8 + 24) % 24;
+    const bedtimeAmpm = bedtimeH >= 12 ? 'PM' : 'AM';
+    const displayBedtimeH = (bedtimeH % 12 || 12).toString().padStart(2, '0');
+    const displayBedtimeM = alarmM.toString().padStart(2, '0');
+    const bedtimeStr = `${displayBedtimeH}:${displayBedtimeM} ${bedtimeAmpm}`;
+
     return {
       label: upcoming.alarm.label || 'Alarm',
       timeStr: upcoming.alarm.time,
-      countdownStr: hoursLeft > 0 ? `${hoursLeft}h ${minsLeft}m` : `${minsLeft} mins`
+      countdownStr: hoursLeft > 0 ? `${hoursLeft}h ${minsLeft}m` : `${minsLeft} mins`,
+      bedtimeStr
     };
   };
 
@@ -62,7 +70,7 @@ const ClockDisplay = ({ alarms = [], onTestAlarm, onAddAlarmClick }) => {
   const dateStr = time.toLocaleDateString(undefined, dateOptions);
 
   const playSoundPreview = () => {
-    audioEngine.startAlarm('siren');
+    audioEngine.startAlarm('siren', 'drill');
     setTimeout(() => {
       audioEngine.stopAlarm();
     }, 2500);
@@ -78,18 +86,23 @@ const ClockDisplay = ({ alarms = [], onTestAlarm, onAddAlarmClick }) => {
         <div className="date-str">{dateStr}</div>
       </div>
 
-      {/* Main Digital Clock */}
       <div className="digital-clock">
         <span className="clock-time">{displayHours}:{minutes}</span>
         <span className="clock-seconds">:{seconds}</span>
         <span className="clock-ampm">{ampm}</span>
       </div>
 
-      {/* Upcoming Alarm Indicator */}
       {nextAlarm ? (
-        <div className="upcoming-alarm-banner">
-          <Clock size={16} />
-          <span>Next Alarm ({nextAlarm.label} at {nextAlarm.timeStr}) in <strong>{nextAlarm.countdownStr}</strong></span>
+        <div className="upcoming-alarm-container">
+          <div className="upcoming-alarm-banner">
+            <Clock size={16} />
+            <span>Next Alarm ({nextAlarm.label} at {nextAlarm.timeStr}) in <strong>{nextAlarm.countdownStr}</strong></span>
+          </div>
+
+          <div className="bedtime-banner">
+            <Moon size={16} className="moon-icon" />
+            <span>Smart Bedtime: Sleep by <strong>{nextAlarm.bedtimeStr}</strong> for 8 hrs optimal recovery</span>
+          </div>
         </div>
       ) : (
         <div className="upcoming-alarm-banner inactive">
@@ -98,14 +111,13 @@ const ClockDisplay = ({ alarms = [], onTestAlarm, onAddAlarmClick }) => {
         </div>
       )}
 
-      {/* Action Buttons */}
       <div className="clock-action-bar">
         <button className="btn btn-primary btn-glow" onClick={onTestAlarm}>
-          <Zap size={18} /> Test 10 Pushups Challenge
+          <Zap size={18} /> Test AI Exercise Challenge
         </button>
 
         <button className="btn btn-secondary" onClick={playSoundPreview}>
-          <Volume2 size={18} /> Sound Test
+          <Volume2 size={18} /> Sound & Voice Test
         </button>
 
         <button className="btn btn-outline" onClick={onAddAlarmClick}>
