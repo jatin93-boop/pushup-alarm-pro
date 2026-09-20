@@ -867,9 +867,17 @@ input:checked + .toggle-slider:before {
   gap: 1rem;
 }
 
-.btn-audio-toggle {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+.sound-active-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 0, 85, 0.15);
+  border: 1px solid rgba(255, 0, 85, 0.4);
+  color: var(--crimson-alarm);
+  padding: 0.6rem 1rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 800;
 }
 
 .emergency-override-wrapper {

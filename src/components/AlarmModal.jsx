@@ -2,19 +2,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import PushupDetector from './PushupDetector';
 import { audioEngine } from '../utils/audioSynth';
 import confetti from 'canvas-confetti';
-import { ShieldAlert, Trophy, Volume2, VolumeX, CheckCircle, Zap } from 'lucide-react';
+import { ShieldAlert, Trophy, Volume2, CheckCircle, Zap } from 'lucide-react';
 
 const AlarmModal = ({ alarm, onDismiss, isTestMode = false }) => {
   const [currentReps, setCurrentReps] = useState(0);
   const targetReps = alarm?.targetReps || 10;
   const soundType = alarm?.soundType || 'siren';
   
-  const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const [overrideHoldTime, setOverrideHoldTime] = useState(0);
   const overrideTimerRef = useRef(null);
 
-  // Start alarm audio on mount
+  // Start alarm audio on mount - Mute option disabled (Must complete pushups to turn off sound)
   useEffect(() => {
     audioEngine.startAlarm(soundType);
 
@@ -67,16 +66,6 @@ const AlarmModal = ({ alarm, onDismiss, isTestMode = false }) => {
     setOverrideHoldTime(0);
   };
 
-  const toggleMute = () => {
-    if (isAudioMuted) {
-      audioEngine.startAlarm(soundType);
-      setIsAudioMuted(false);
-    } else {
-      audioEngine.stopAlarm();
-      setIsAudioMuted(true);
-    }
-  };
-
   return (
     <div className={`alarm-modal-overlay ${isDismissed ? 'dismissed-state' : ''}`}>
       <div className="alarm-modal-container">
@@ -123,12 +112,12 @@ const AlarmModal = ({ alarm, onDismiss, isTestMode = false }) => {
               onGoalReached={handleGoalReached}
             />
 
-            {/* Audio Mute & Emergency Hold Controls */}
+            {/* Locked Sound Status & Emergency Hold Controls */}
             <div className="alarm-footer-controls">
-              <button className="btn btn-audio-toggle" onClick={toggleMute}>
-                {isAudioMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-                {isAudioMuted ? 'Unmute Siren' : 'Mute Sound'}
-              </button>
+              <div className="sound-active-badge">
+                <Volume2 size={16} className="spin-icon" />
+                <span>SOUND LOCKED (DO PUSHUPS TO STOP)</span>
+              </div>
 
               <div className="emergency-override-wrapper">
                 <button 
