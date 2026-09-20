@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">RepRise</string>
-    <string name="title_activity_main">RepRise</string>
-    <string name="package_name">com.jatin.reprise</string>
-    <string name="custom_url_scheme">com.jatin.reprise</string>
+    <string name="app_name">AuraWake</string>
+    <string name="title_activity_main">AuraWake</string>
+    <string name="package_name">com.jatin.aurawake</string>
+    <string name="custom_url_scheme">com.jatin.aurawake</string>
 </resources>

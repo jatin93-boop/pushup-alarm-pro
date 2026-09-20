@@ -1,7 +1,7 @@
 {
-  "name": "RepRise - AI Push-Up Alarm",
-  "short_name": "RepRise",
-  "description": "An intelligent, persistent alarm app that only turns off when you perform 10 pushups tracked live with AI webcam pose detection.",
+  "name": "AuraWake - AI Workout Alarm",
+  "short_name": "AuraWake",
+  "description": "An intelligent, persistent alarm app that only turns off when you perform AI camera-tracked workouts.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",

@@ -206,7 +206,7 @@ const App = () => {
           <div className="logo-icon-bg">
             <Dumbbell size={22} className="brand-icon" />
           </div>
-          <span className="brand-title">Rep<span className="brand-highlight">Rise</span></span>
+          <span className="brand-title">Aura<span className="brand-highlight">Wake</span></span>
         </div>
 
         <nav className="nav-tabs">

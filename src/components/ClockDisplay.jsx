@@ -81,7 +81,7 @@ const ClockDisplay = ({ alarms = [], onTestAlarm, onAddAlarmClick }) => {
       <div className="clock-header">
         <div className="greeting-badge">
           <Flame size={18} className="streak-icon" />
-          <span>REPRISE - EARN YOUR MORNING</span>
+          <span>AURAWAKE - EARN YOUR MORNING</span>
         </div>
         <div className="date-str">{dateStr}</div>
       </div>
