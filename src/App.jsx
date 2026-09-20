@@ -4,7 +4,9 @@ import AlarmList from './components/AlarmList';
 import AlarmModal from './components/AlarmModal';
 import StatsView from './components/StatsView';
 import { audioEngine } from './utils/audioSynth';
-import { Dumbbell, Clock, Trophy, ShieldAlert, Volume2 } from 'lucide-react';
+import { notificationScheduler } from './utils/notificationScheduler';
+import { Dumbbell, Clock, Trophy, ShieldAlert, Volume2, Bell } from 'lucide-react';
+import { LocalNotifications } from '@capacitor/local-notifications';
 
 const DEFAULT_ALARMS = [
   {
@@ -43,52 +45,101 @@ const App = () => {
   const [isTestMode, setIsTestMode] = useState(false);
   const [audioEngineReady, setAudioEngineReady] = useState(false);
   const [lastTriggeredTimeStr, setLastTriggeredTimeStr] = useState('');
+  const [notificationsGranted, setNotificationsGranted] = useState(false);
 
-  // Save alarms & history to localStorage
+  // Save alarms & history to localStorage and schedule native local notifications
   useEffect(() => {
     localStorage.setItem('pushup_alarms', JSON.stringify(alarms));
+    
+    // Schedule native OS notifications for active alarms
+    alarms.forEach(alarm => {
+      if (alarm.enabled) {
+        notificationScheduler.scheduleAlarmNotification(alarm);
+      }
+    });
   }, [alarms]);
 
   useEffect(() => {
     localStorage.setItem('pushup_history', JSON.stringify(history));
   }, [history]);
 
+  // Request notifications permission on start
+  useEffect(() => {
+    notificationScheduler.requestPermissions().then(granted => {
+      setNotificationsGranted(granted);
+    });
+
+    // Listen for native Capacitor notification taps
+    let listener = null;
+    if (typeof window !== 'undefined' && window.Capacitor) {
+      listener = LocalNotifications.addListener('localNotificationActionPerformed', (notification) => {
+        const extra = notification.notification.extra;
+        if (extra && extra.alarmId) {
+          const matched = alarms.find(a => a.id === extra.alarmId);
+          if (matched) {
+            triggerAlarm(matched, false);
+          }
+        }
+      });
+    }
+
+    return () => {
+      if (listener && listener.remove) {
+        listener.remove();
+      }
+    };
+  }, [alarms]);
+
+  // Handle Page Visibility Change (Catch-up when phone is unlocked or tab is reopened)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !activeRingingAlarm) {
+        checkAndTriggerCurrentAlarms();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [alarms, activeRingingAlarm]);
+
   // Unlock Audio Engine on first interaction
   const enableAudioEngine = () => {
     audioEngine.initContext();
     setAudioEngineReady(true);
+    notificationScheduler.requestPermissions();
+  };
+
+  const checkAndTriggerCurrentAlarms = () => {
+    const now = new Date();
+    const currentHoursStr = now.getHours().toString().padStart(2, '0');
+    const currentMinsStr = now.getMinutes().toString().padStart(2, '0');
+    const timeStr = `${currentHoursStr}:${currentMinsStr}`;
+
+    if (timeStr === lastTriggeredTimeStr) return;
+
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const todayName = dayNames[now.getDay()];
+
+    const matchedAlarm = alarms.find(a => {
+      if (!a.enabled) return false;
+      if (a.time !== timeStr) return false;
+      if (a.repeatDays && a.repeatDays.length > 0 && !a.repeatDays.includes(todayName)) {
+        return false;
+      }
+      return true;
+    });
+
+    if (matchedAlarm) {
+      setLastTriggeredTimeStr(timeStr);
+      triggerAlarm(matchedAlarm, false);
+    }
   };
 
   // Background Alarm Checker loop (runs every second)
   useEffect(() => {
     const interval = setInterval(() => {
-      if (activeRingingAlarm) return; // Alarm already active
-
-      const now = new Date();
-      const currentHoursStr = now.getHours().toString().padStart(2, '0');
-      const currentMinsStr = now.getMinutes().toString().padStart(2, '0');
-      const timeStr = `${currentHoursStr}:${currentMinsStr}`;
-
-      // Prevent triggering multiple times in the same minute
-      if (timeStr === lastTriggeredTimeStr) return;
-
-      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      const todayName = dayNames[now.getDay()];
-
-      const matchedAlarm = alarms.find(a => {
-        if (!a.enabled) return false;
-        if (a.time !== timeStr) return false;
-        // If repeat days configured, must include today
-        if (a.repeatDays && a.repeatDays.length > 0 && !a.repeatDays.includes(todayName)) {
-          return false;
-        }
-        return true;
-      });
-
-      if (matchedAlarm) {
-        setLastTriggeredTimeStr(timeStr);
-        triggerAlarm(matchedAlarm, false);
-      }
+      if (activeRingingAlarm) return;
+      checkAndTriggerCurrentAlarms();
     }, 1000);
 
     return () => clearInterval(interval);
@@ -98,6 +149,12 @@ const App = () => {
     enableAudioEngine();
     setIsTestMode(testMode);
     setActiveRingingAlarm(alarmItem);
+
+    // Also fire a system notification if running in background
+    notificationScheduler.sendBrowserNotification(
+      `🚨 ALARM: ${alarmItem.label || 'Wake Up Time!'}`,
+      `Do ${alarmItem.targetReps || 10} Push-ups to stop the alarm!`
+    );
   };
 
   // Trigger test alarm (10 pushups goal)
@@ -171,7 +228,7 @@ const App = () => {
       {/* Enable Audio Engine Warning Banner if context suspended */}
       {!audioEngineReady && (
         <div className="audio-banner" onClick={enableAudioEngine}>
-          <Volume2 size={18} /> Tap anywhere to enable Alarm Audio Engine
+          <Volume2 size={18} /> Tap anywhere to activate Alarm Audio & Notification Engine
         </div>
       )}
 
